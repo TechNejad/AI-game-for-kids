@@ -1,10 +1,10 @@
 # 🎮 **Prompt Academy** 
 
-### 🚀 [**Play Live Game Here**](https://prompt-academy1.netlify.app/)
+### [**Try Our Live Game Demo Here**](https://prompt-academy1.netlify.app/)
 
 ---
 
-## 📊 Presentation
+### Presentation
 
 ![Slide 1](Presentations/Page1.jpg)
 
@@ -23,7 +23,3 @@
 ![Slide 8](Presentations/page8.jpg)
 
 ---
-
-## 📄 Documentation
-
-For detailed game plan, see [Prompt Academy Game Plan](Presentations/Prompt%20academy%20Game%20Plan.pdf)
