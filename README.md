@@ -1,15 +1,29 @@
-# “Generate...Summarize...Create”: Why do your AI-assistants behave the way they do?
+# 🎮 **Prompt Academy** 
 
-This is an active project for the Interdisciplinary Project course, being developed by Mohsen Hassan Nejad, Jacob Solaña, Isabella Anderson, and Luke Schumacher.
-
-Our goal is to create an interactive platform that helps users understand how AI models behave the way they do: by unmasking the hidden system prompts and behavior patterns embedded in different AI agents and characters.
+### 🚀 [**Play Live Game Here**](https://prompt-academy1.netlify.app/)
 
 ---
 
-## Live Demo
+## 📊 Presentation
 
-<a href="https://technejad.github.io/chatbot_demo/" target="_blank">
-<img src="https://static.streamlit.io/badges/streamlit_badge_black_white.svg" alt="Live Demo"/>
-</a>
+![Slide 1](Presentations/Page1.jpg)
+
+![Slide 2](Presentations/Page2.jpg)
+
+![Slide 3](Presentations/page3.jpg)
+
+![Slide 4](Presentations/page4.jpg)
+
+![Slide 5](Presentations/page5.jpg)
+
+![Slide 6](Presentations/page6.jpg)
+
+![Slide 7](Presentations/page7.jpg)
+
+![Slide 8](Presentations/page8.jpg)
 
 ---
+
+## 📄 Documentation
+
+For detailed game plan, see [Prompt Academy Game Plan](Presentations/Prompt%20academy%20Game%20Plan.pdf)
