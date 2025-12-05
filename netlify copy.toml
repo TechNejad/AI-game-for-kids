@@ -1,0 +1,18 @@
+[build]
+  publish = "V2.0"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/start_level"
+  to = "/V2.0/start_level.html"
+  status = 200
+
+[[redirects]]
+  from = "/biodome_intro"
+  to = "/V2.0/biodome_intro.html"
+  status = 200
+
+[[redirects]]
+  from = "/ecology_level"
+  to = "/V2.0/ecology_level.html"
+  status = 200

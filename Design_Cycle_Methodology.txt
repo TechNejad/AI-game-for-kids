@@ -1,0 +1,90 @@
+================================================================================
+PROMPT ACADEMY: DESIGN CYCLE & METHODOLOGY
+"Generate...Summarize...Create" - AI Behavior Educational Game
+================================================================================
+
+PROJECT OVERVIEW
+An interactive educational game teaching students (ages 10-13) how system
+prompts shape AI behavior through narrative-driven puzzles and real AI-powered
+characters.
+
+DESIGN CYCLE PHASES
+
+1. EMPATHIZE & DEFINE
+   • Target Audience: Middle school students (10-13 years old)
+   • Problem: Abstract AI concepts (system prompts, context) are difficult
+     to understand
+   • Solution: Make AI behavior tangible through interactive gameplay with
+     real LLM-powered characters
+   • Learning Goals: System prompt awareness, sequential logic, precise
+     communication
+
+2. IDEATE & PLAN
+   • Initial brainstorming documented in design proposals and drafts
+   • Character personas defined: Ratio (grumpy guide), GARY (helpful robot),
+     Bio-Bot (emotional gardener)
+   • Progressive level design: Tutorial → Component Assembly → Prompt
+     Fill-in-the-Blanks
+   • Technical architecture: HTML5 Canvas + Serverless Functions + LLM API
+
+3. PROTOTYPE
+   • V1.0 "Persona Playground": Simple chatbot proof-of-concept with 4
+     personality types
+   • Isolated test environments: movement_system_test.html, clanker_test.html,
+     game_save.html
+   • Component testing before integration
+   • Rapid iteration to validate core mechanics
+
+4. DEVELOP & ITERATE
+   • V2.0 "Prompt Academy": Full game with 3 levels (4,046+ lines of code)
+   • 30+ git commits showing iterative refinement cycle
+   • Major iterations: Save system fixes, aspect ratio adjustments, dialogue
+     rewrites, music integration
+   • Context-aware AI system with dynamic responses via Groq API (llama-3.1-8b)
+   • Security implementation: API keys hidden in Netlify serverless backend
+
+5. TEST & REFINE
+   • Analytics logging system to track player interactions and mistakes
+   • User feedback integration: Simplified language, visual feedback
+     (happy/sad states), progressive hints
+   • Bug fix cycles documented in commit history
+   • Cross-browser compatibility and performance optimization (5-min caching)
+
+6. DEPLOY & EVALUATE
+   • Production deployment on Netlify with continuous delivery pipeline
+   • Separate deployment branch for staging/production workflow
+   • Live demo accessible at technejad.github.io/chatbot_demo
+   • Ongoing refinements based on real-world usage
+
+KEY DESIGN ELEMENTS
+
+Technology Stack:
+• Frontend: Pure JavaScript, HTML5 Canvas (no frameworks), CSS3
+• Backend: Netlify Serverless Functions, Groq API with key rotation
+• Data: LocalStorage for game state persistence
+
+Educational Methodology:
+• Learning by Doing: Hands-on experimentation with immediate feedback
+• Scaffolded Difficulty: Tutorial guidance → Independent problem-solving
+• Safe Failure Environment: Retry mechanisms, no permanent consequences
+• Narrative Engagement: Fantasy academy setting motivates learning
+
+Innovation:
+• Real AI Dialogue: Characters respond dynamically using LLM (not scripted)
+• Context-Aware System Prompts: Same AI behaves differently per game context
+• Visual Feedback Loops: Character emotions reflect prompt accuracy
+• Progressive Complexity: From simple door puzzle to multi-stage germination
+
+IMPACT & OUTCOMES
+• Successfully transformed abstract AI concepts into accessible, engaging
+  gameplay for middle school students
+• Demonstrated complete iterative design cycle from initial concept through
+  prototyping to production deployment
+• Achieved measurable learning objectives through real-world AI integration
+  with dynamic LLM-powered characters
+
+================================================================================
+Project Team: Mohsen Hassan Nejad, Jacob Solana, Isabella Anderson,
+Luke Schumacher
+Interdisciplinary Project Course
+================================================================================

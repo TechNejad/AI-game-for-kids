@@ -1,0 +1,2074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Academy</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script type="module">
+        // This script is intentionally left blank.
+        // The API key has been moved to a secure serverless function.
+    </script>
+    <style>
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #00FFFF;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 24px;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 20px;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto Mono', monospace;
+            overflow: hidden;
+        }
+        .game-container {
+            position: relative;
+        }
+        .game-console-body {
+            background: linear-gradient(145deg, #3c3c3c, #1e1e1e);
+            border-radius: 30px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            border: 2px solid #111;
+            width: auto;
+            max-height: 98vh;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
+        }
+        #canvas-header {
+            color: #aaa;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #game-canvas {
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 91vw;
+            max-height: 77vh;
+            height: auto;
+            aspect-ratio: 1536 / 1024;
+            object-fit: contain;
+            background-color: #000;
+        }
+        #game-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .control-button {
+            background-color: #333;
+            border: 1px solid #555;
+            color: #eee;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .control-button:hover {
+            background-color: #444;
+            border-color: #777;
+        }
+        #start-button {
+            position: absolute;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 20px 40px;
+            font-size: 28px;
+            font-family: 'Roboto Mono', monospace;
+            background-color: rgba(10, 25, 40, 0.7);
+            color: #a0e9ff;
+            border: 2px solid #50c8e8;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(80, 200, 232, 0.5), inset 0 0 10px rgba(80, 200, 232, 0.3);
+            text-shadow: 0 0 8px #50c8e8;
+            display: block;
+            letter-spacing: 2px;
+        }
+        #start-button:hover {
+            background-color: rgba(20, 40, 60, 0.9);
+            color: #ffffff;
+            box-shadow: 0 0 25px rgba(80, 200, 232, 0.8), inset 0 0 15px rgba(80, 200, 232, 0.5);
+            text-shadow: 0 0 12px #a0e9ff;
+        }
+        #save-feedback {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 255, 127, 0.8);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">LOADING...</div>
+    <div class="game-container">
+        <div class="game-console-body">
+            <div id="canvas-header">AI ACADEMY</div>
+            <canvas id="game-canvas" width="1536" height="1024"></canvas>
+            <div id="game-controls">
+                <button id="save-button" class="control-button">Save Game</button>
+                <button id="load-button" class="control-button">Load Last Save</button>
+                <button id="new-game-button" class="control-button">New Game</button>
+            </div>
+        </div>
+        <button id="start-button">START</button>
+    </div>
+    <div id="save-feedback"></div>
+
+    <!-- Background Music -->
+    <audio id="background-music" loop>
+        <source src="assets/audio/Pixel_Paradise_Start_Level1_2.mp3" type="audio/mpeg">
+    </audio>
+
+    <script type="module">
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('start-button');
+
+        // Loading Screen Logic
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loading-overlay');
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 500);
+        });
+
+        // Initialize background music
+        const backgroundMusic = document.getElementById('background-music');
+        backgroundMusic.volume = 0.25; 
+
+        // Play music check for saved time
+        function startBackgroundMusic() {
+            const savedTime = parseFloat(localStorage.getItem('bgMusicTime'));
+            if (!isNaN(savedTime)) {
+                backgroundMusic.currentTime = savedTime;
+            }
+            
+            backgroundMusic.play().catch(error => {
+                console.log('Audio playback failed:', error);
+            });
+        }
+
+        // Save audio time on page transition
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('bgMusicTime', backgroundMusic.currentTime);
+        });
+
+        // ============================================================================
+        // ANALYTICS MANAGER
+        // ============================================================================
+        const analytics = {
+            sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            sessionStart: Date.now(),
+            events: [],
+
+            // Core logging function
+            log(eventType, data = {}) {
+                const event = {
+                    timestamp: Date.now(),
+                    sessionId: this.sessionId,
+                    type: eventType,
+                    data: data
+                };
+
+                this.events.push(event);
+
+                // Send to Netlify immediately for important events
+                if (this.shouldSendImmediately(eventType)) {
+                    this.sendToNetlify(event);
+                }
+            },
+
+            shouldSendImmediately(type) {
+                // Send critical events right away
+                return ['level_complete', 'mistake', 'cooldown_trigger', 'session_end'].includes(type);
+            },
+
+            async sendToNetlify(event) {
+                try {
+                    await fetch('/.netlify/functions/log-analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(event)
+                    });
+                } catch (error) {
+                    console.error('Analytics logging failed:', error);
+                    // Fail silently - don't break game
+                }
+            },
+
+            // Batch send on session end
+            async sendAll() {
+                if (this.events.length === 0) return;
+
+                try {
+                    await fetch('/.netlify/functions/log-analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: this.sessionId,
+                            sessionStart: this.sessionStart,
+                            sessionEnd: Date.now(),
+                            totalEvents: this.events.length,
+                            events: this.events
+                        })
+                    });
+                } catch (error) {
+                    console.error('Batch analytics send failed:', error);
+                }
+            }
+        };
+
+        // Send analytics on page unload
+        window.addEventListener('beforeunload', () => {
+            analytics.log('session_end', {
+                duration: Date.now() - analytics.sessionStart,
+                totalEvents: analytics.events.length
+            });
+            analytics.sendAll();
+        });
+
+        // --- TUNABLE CONSTANTS ---
+        const PLAYER_SPEED = 135;
+        const RATIO_SPEED = 110;
+        const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
+        const GARY_IDLE_FPS = 3; // Higher number = slower animation
+
+        const PLAYER_DISPLAY_WIDTH = 60; 
+        const PLAYER_DISPLAY_HEIGHT = 88; 
+        const RATIO_DISPLAY_WIDTH = 42; 
+        const RATIO_DISPLAY_HEIGHT = 44;
+        const GROUNDSKEEPER_DISPLAY_WIDTH = 60; 
+        const GROUNDSKEEPER_DISPLAY_HEIGHT = 78;
+
+        let gameState = {
+            gameMode: 'startScreen',
+            transitionAlpha: 0,
+            isAiThinking: false,
+            leaves: [],
+            player: { 
+                x: 750, y: 800, spriteWidth: 164, spriteHeight: 243,
+                width: PLAYER_DISPLAY_WIDTH, height: PLAYER_DISPLAY_HEIGHT,
+                frameX: 0, frameY: 0, speed: PLAYER_SPEED, moving: false 
+            },
+            ratio: { 
+                x: 0, y: 0, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT, 
+                speed: RATIO_SPEED, followDistance: 90, direction: 'right', synced: false
+            },
+            keys: { w: false, a: false, s: false, d: false },
+            nearbyObject: null,
+            activeDialogue: {
+                isActive: false, speaker: null, text: '', displayText: '',
+                charIndex: 0, options: [], selectedOption: 0
+            },
+            tutorialState: {
+                step: 0,
+                ratioSyncStep: 0,
+                doorOpen: false,
+                doorHintShown: false,
+                dialogueHistory: [],
+                controlsExplained: false,
+            },
+            level1State: {
+                inventory: { cog: false, loom: false, chip: false },
+                garyFixed: false,
+                garyDialogueStep: 0,
+                garyQuestActive: false,
+                garyAnimationState: 'off',
+                garyAnimationFrame: 0,
+                garyAnimationTimer: 0,
+                levelComplete: false,
+                completeMessageTimer: 0,
+                dialogueHistory: [],
+            },
+            resonanceState: {
+                isActive: false,
+                currentPiece: null, // 'cog', 'loom', or 'chip'
+                pattern: [],
+                patternDisplay: [], // Visual representation
+                currentIndex: 0,
+                pulseTimer: 0,
+                pulseDuration: 1.0, // seconds between beats
+                successCount: 0,
+                requiredSuccess: 0,
+                feedbackTimer: 0, // for showing correct/wrong feedback
+                lastCorrect: null, // true/false/null
+                syncProgress: 0, // 0 to 1
+                particles: []
+            },
+            startScreenState: {
+                finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 6, moving: false, frameY: 0 },
+                ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 6, moving: false },
+                gary: { x: canvas.width / 1.21 - (GROUNDSKEEPER_DISPLAY_WIDTH * 1.8 / 2), y: 800, frame: 0, timer: 0 }
+            },
+            // New Boundary Properties
+            showBoundaries: false, // Toggle visibility of boundaries
+            boundaryThickness: 9, // Default visual thickness of boundaries
+            tutorialBoundaryAdjustments: {
+                tutorial_wall_left: { adjustX: 40, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                tutorial_wall_right: { adjustX: -40, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                tutorial_wall_top: { adjustX: 0, adjustY: 350, adjustWidth: 0, adjustHeight: 0 }, // Move top wall down by 100px
+                tutorial_wall_bottom: { adjustX: 0, adjustY: 100, adjustWidth: 0, adjustHeight: 0 }
+            },
+            level1BoundaryAdjustments: {
+            // Walls
+            'wall_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'wall_left_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'wall_left_main': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'wall_right_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'wall_right_main': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'wall_bottom': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+
+            // Buildings
+            'building_left': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'building_center': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'building_right': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+
+            // Top Trees
+            'tree_top_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'tree_top_2': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'tree_top_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'tree_top_4': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'tree_top_5': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+
+            // Left Trees
+            'tree_left_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'tree_left_2': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            'tree_left_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+
+            // Right Trees
+            'tree_right_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            // 'tree_right_2' was removed to open path to bot
+            'tree_right_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+
+            // Bottom Trees
+            'tree_bottom_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            // 'tree_bottom_2' was removed for spawn area
+            'tree_bottom_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+            }
+        };
+
+        const DOOR_BASE_WIDTH = 1050 * DOOR_SCALE_FACTOR;
+        const DOOR_BASE_HEIGHT = 1200 * DOOR_SCALE_FACTOR;
+
+        const tutorialInteractables = [
+            { id: 'ratio_start', name: 'Ratio', x: 750, y: 700, width: 35, height: 37 },
+            { id: 'door', name: 'Academy Entrance', x: (1536 / 2) - (DOOR_BASE_WIDTH / 2), y: -700, width: DOOR_BASE_WIDTH, height: DOOR_BASE_HEIGHT },
+        ];
+        
+        const level1Interactables = [
+            { id: 'broken_gary', name: 'Deactivated GARY', x: 1380, y: 450, width: 60, height: 78 },
+            { id: 'cog', name: 'Brain Chip', x: 350, y: 550, width: 20, height: 20 }, // Left side of courtyard
+            { id: 'loom', name: 'Language Chip', x: 750, y: 700, width: 20, height: 20 }, // Center-bottom area
+            { id: 'chip', name: 'Personality Chip', x: 1100, y: 550, width: 20, height: 20 }, // Right side of courtyard
+            { id: 'biodome_door', name: 'Bio-Dome Entrance', x: 700, y: 560, width: 70, height: 100 } // Near empathy chip, subtle door
+        ];
+        
+        const startScreenImage = new Image();
+        const level1MapImage = new Image();
+        const playerImage = new Image();
+        const ratioImageR = new Image();
+        const ratioImageL = new Image();
+        const brokenGaryImage = new Image();
+        const garyWakeUpImage = new Image();
+        const fixedGaryIdleImage = new Image();
+        const cogImage = new Image();
+        const loomImage = new Image();
+        const chipImage = new Image();
+        const doorSpriteImage = new Image();
+        const doorOpenImage = new Image();
+        const doorClosedImage = new Image();
+        const snowflakeImage = new Image();
+        const introductionImage = new Image();
+        const textboxBackgroundImage = new Image();
+        
+        startScreenImage.src = 'assets/start/start_background.png';
+        level1MapImage.src = 'assets/start/level_1_background.png';
+        playerImage.src = 'assets/start/walking_character_Finn.png';
+        ratioImageR.src = 'assets/start/Ratio_R.png'; 
+        ratioImageL.src = 'assets/start/Ratio_L.png';
+        brokenGaryImage.src = 'assets/start/deactivated_gary.png';
+        garyWakeUpImage.src = 'assets/start/GARY_Wake_Up_Sitting.png';
+        fixedGaryIdleImage.src = 'assets/start/GARY_idle2.png';
+        cogImage.src = 'assets/start/cognative_cog.png';
+        loomImage.src = 'assets/start/logic_loom.png';
+        chipImage.src = 'assets/start/empathy_chip.png';
+        doorSpriteImage.src = 'assets/start/door_sprite.png';
+        doorOpenImage.src = 'assets/start/door_open.png';
+        doorClosedImage.src = 'assets/start/door_closed.png';
+        snowflakeImage.src = 'assets/start/snowflake.png';
+        introductionImage.src = 'assets/ui/introduction_background.png';
+        textboxBackgroundImage.src = 'assets/ui/textbox_background.png';
+        
+        const ratioPersona = {
+            tutorialSystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through their first trial at the Prompt Academy. You are calling them on a journey, but pretending that you did not need them to be there.
+
+RIGHT NOW: Your goal is to get them to sync with you, then help them open a mysterious door. The door is special - it needs to be told WHO it is and what it should do for it to work.
+
+Keep responses super short, one sentence. Be encouraging and a little playful. Do not be mean or insulting. Use simple words - you are talking to kids aged 10-13. You can occasionally call them "friend" but don't overuse it. Do not mention GARY or anything beyond the door yet.`,
+
+            level1SystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through the Prompt Academy. You've just entered the main grounds together and now need to help them fix a broken robot named GARY.
+
+Keep responses super short, one sentence. Be encouraging and a little playful. Do not be mean or insulting. Use simple words - you are talking to kids aged 10-13. You can occasionally call them "friend" but don't overuse it.`
+        };
+
+        const garyPersona = {
+            systemPrompt: `You are GARY, the groundskeeper of the Prompt Academy. You were recently restored by a student. You are helpful and knowledgeable about the academy grounds. You are grateful to the student for restoring you. Keep your responses to 1-2 short, helpful sentences.`
+        };
+
+        // Resonance patterns for each component
+        const resonancePatterns = {
+            cog: {
+                pattern: ['w', 'w', 's', 's', 'w', 'w'], // Slow, deliberate thinking pattern
+                display: ['↑', '↑', '↓', '↓', '↑', '↑'],
+                pulseDuration: 0.8, // Slower, thoughtful rhythm
+                color: '#FFD700', // Gold
+                name: 'Brain Chip',
+                description: 'Match the rhythm of thought...'
+            },
+            loom: {
+                pattern: ['w', 'a', 's', 'd', 'w', 'a', 's', 'd'], // Logical sequence
+                display: ['↑', '←', '↓', '→', '↑', '←', '↓', '→'],
+                pulseDuration: 0.6, // Precise, methodical rhythm
+                color: '#00BFFF', // Blue
+                name: 'Language Chip',
+                description: 'Follow the logical sequence...'
+            },
+            chip: {
+                pattern: ['w', 'd', 's', 'a', 'w', 'd', 's', 'a'], // Flowing circular pattern
+                display: ['↑', '→', '↓', '←', '↑', '→', '↓', '←'],
+                pulseDuration: 0.7, // Flowing, organic rhythm
+                color: '#FF69B4', // Pink
+                name: 'Personality Chip',
+                description: 'Feel the emotional resonance...'
+            }
+        };
+        
+        function saveGame() {
+            try {
+                localStorage.setItem('meMyselfAiSave_v5', JSON.stringify(gameState));
+                showSaveFeedback('Game Saved!');
+            } catch (error) { console.error("Could not save game:", error); }
+        }
+
+        function loadGame() {
+            try {
+                const savedData = localStorage.getItem('meMyselfAiSave_v5');
+                if (savedData) {
+                    const loadedState = JSON.parse(savedData);
+                    if (loadedState.gameMode && loadedState.gameMode !== 'startScreen') {
+                        gameState = loadedState;
+
+                        // Fix: Clear any active dialogues since action functions can't be serialized
+                        gameState.activeDialogue = {
+                            isActive: false,
+                            speaker: null,
+                            text: '',
+                            displayText: '',
+                            charIndex: 0,
+                            options: [],
+                            selectedOption: 0
+                        };
+
+                        // Fix: Clear resonance state if it was active (prevents issues with saved mini-game state)
+                        if (gameState.resonanceState && gameState.resonanceState.isActive) {
+                            gameState.resonanceState.isActive = false;
+                        }
+
+                        // Hide start button when loading a saved game
+                        const startButton = document.getElementById('start-button');
+                        if (startButton) {
+                            startButton.style.display = 'none';
+                        }
+                        showSaveFeedback('Save data loaded!');
+                    }
+                }
+            } catch (error) {
+                console.error("Could not load game:", error);
+                localStorage.removeItem('meMyselfAiSave_v5');
+            }
+        }
+        
+        function showSaveFeedback(message) {
+            const feedbackElement = document.getElementById('save-feedback');
+            if (!feedbackElement) return;
+
+            feedbackElement.textContent = message;
+            feedbackElement.style.opacity = 1;
+
+            setTimeout(() => {
+                feedbackElement.style.opacity = 0;
+            }, 2000); // Show the message for 2 seconds
+        }
+
+        function newGame() {
+            if (confirm('Are you sure you want to start a new game? This will delete your current save.')) {
+                localStorage.removeItem('meMyselfAiSave_v5');
+                location.reload();
+            }
+        }
+
+        function startDialogue(speaker, text, options = []) {
+            const { activeDialogue } = gameState;
+            activeDialogue.isActive = true;
+            activeDialogue.speaker = speaker;
+            activeDialogue.text = text;
+            activeDialogue.displayText = '';
+            activeDialogue.charIndex = options.length > 0 ? text.length : 0; // Immediately show full text if options are present
+            activeDialogue.options = options;
+            activeDialogue.selectedOption = 0;
+        }
+
+        function closeDialogue() {
+            gameState.activeDialogue.isActive = false;
+        }
+
+        function startResonanceTuning(pieceType) {
+            const pattern = resonancePatterns[pieceType];
+            if (!pattern) return;
+
+            const { resonanceState } = gameState;
+            resonanceState.isActive = true;
+            resonanceState.currentPiece = pieceType;
+            resonanceState.pattern = pattern.pattern;
+            resonanceState.patternDisplay = pattern.display;
+            resonanceState.pulseDuration = pattern.pulseDuration;
+            resonanceState.currentIndex = 0;
+            resonanceState.pulseTimer = 0;
+            resonanceState.successCount = 0;
+            resonanceState.requiredSuccess = pattern.pattern.length;
+            resonanceState.feedbackTimer = 0;
+            resonanceState.lastCorrect = null;
+            resonanceState.syncProgress = 0;
+            resonanceState.particles = [];
+
+            // Analytics: Track resonance mini-game start
+            analytics.log('resonance_start', {
+                piece: pieceType,
+                pieceName: pattern.name,
+                timeElapsed: Date.now() - analytics.sessionStart
+            });
+        }
+
+        function endResonanceTuning(success) {
+            const { resonanceState, level1State } = gameState;
+
+            // Analytics: Track resonance mini-game end
+            analytics.log('resonance_end', {
+                piece: resonanceState.currentPiece,
+                success: success,
+                successCount: resonanceState.successCount,
+                requiredSuccess: resonanceState.requiredSuccess,
+                timeElapsed: Date.now() - analytics.sessionStart
+            });
+
+            if (success) {
+                // Collect the piece
+                level1State.inventory[resonanceState.currentPiece] = true;
+
+                // Analytics: Track inventory change
+                analytics.log('inventory_acquired', {
+                    item: resonanceState.currentPiece,
+                    itemName: resonancePatterns[resonanceState.currentPiece].name,
+                    timeElapsed: Date.now() - analytics.sessionStart
+                });
+
+                // Calculate how many parts are left
+                const totalParts = 3;
+                const collectedCount = (level1State.inventory.cog ? 1 : 0) +
+                                       (level1State.inventory.loom ? 1 : 0) +
+                                       (level1State.inventory.chip ? 1 : 0);
+                const partsLeft = totalParts - collectedCount;
+
+                // Build list of what's still needed
+                let missingParts = [];
+                if (!level1State.inventory.cog) missingParts.push('Brain Chip');
+                if (!level1State.inventory.loom) missingParts.push('Language Chip');
+                if (!level1State.inventory.chip) missingParts.push('Personality Chip');
+
+                getRatioDialogue(`The user just found the ${resonancePatterns[resonanceState.currentPiece].name}. Congratulate them. There are exactly ${partsLeft} parts left to find. ${partsLeft > 0 ? 'Still missing: ' + missingParts.join(', ') : 'All parts collected!'} Keep it super short, one sentence max.`);
+            }
+
+            // Reset resonance state
+            resonanceState.isActive = false;
+            resonanceState.currentPiece = null;
+            resonanceState.pattern = [];
+            resonanceState.patternDisplay = [];
+            resonanceState.currentIndex = 0;
+            resonanceState.syncProgress = 0;
+            resonanceState.particles = [];
+        }
+
+        async function getRatioDialogue(prompt, callback = null) {
+            if (gameState.isAiThinking) return;
+            gameState.isAiThinking = true;
+            startDialogue("Ratio", "...");
+
+            // Use context-aware system prompt based on game mode
+            const isTutorial = gameState.gameMode === 'tutorial';
+            const systemPrompt = isTutorial ? ratioPersona.tutorialSystemPrompt : ratioPersona.level1SystemPrompt;
+            const currentDialogueHistory = isTutorial ? gameState.tutorialState.dialogueHistory : gameState.level1State.dialogueHistory;
+
+            currentDialogueHistory.push({ role: 'user', content: prompt });
+
+            try {
+                const response = await fetch("/.netlify/functions/get-game-data", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "messages": [ { role: "system", content: systemPrompt }, ...currentDialogueHistory ],
+                        "model": "llama-3.1-8b-instant"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                const fullResponse = data.choices[0]?.message?.content || "";
+                
+                // Since we are not streaming, we can't update the text progressively.
+                // We will just set the full response at once.
+                gameState.activeDialogue.text = fullResponse;
+                gameState.activeDialogue.charIndex = 0; // Start the typing animation
+
+                currentDialogueHistory.push({ role: 'assistant', content: fullResponse });
+
+                if (callback) {
+                    callback();
+                }
+
+            } catch (error) {
+                console.error("API Error:", error);
+                startDialogue("System", "Error: Ratio's connection is unstable.");
+            } finally {
+                gameState.isAiThinking = false;
+            }
+        }
+
+        async function getGaryDialogue(prompt, callback = null) {
+            if (gameState.isAiThinking) return;
+            gameState.isAiThinking = true;
+            startDialogue("GARY", "...");
+
+            const currentDialogueHistory = gameState.level1State.dialogueHistory;
+            currentDialogueHistory.push({ role: 'user', content: prompt });
+
+            try {
+                const response = await fetch("/.netlify/functions/get-game-data", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "messages": [ { role: "system", content: garyPersona.systemPrompt }, ...currentDialogueHistory ],
+                        "model": "llama-3.1-8b-instant"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                const fullResponse = data.choices[0]?.message?.content || "";
+
+                gameState.activeDialogue.text = fullResponse;
+                gameState.activeDialogue.charIndex = 0;
+
+                currentDialogueHistory.push({ role: 'assistant', content: fullResponse });
+
+                if (callback) {
+                    callback();
+                }
+
+            } catch (error) {
+                console.error("API Error:", error);
+                startDialogue("System", "Error: GARY's connection is unstable.");
+            } finally {
+                gameState.isAiThinking = false;
+            }
+        }
+        
+        function handleInteraction() {
+            const { nearbyObject, activeDialogue, tutorialState } = gameState;
+            if (!nearbyObject || activeDialogue.isActive) return;
+
+            const { id } = nearbyObject;
+
+            if (gameState.gameMode === 'tutorial') {
+                if (id === 'ratio_start' && !gameState.ratio.synced) {
+                    handleRatioSyncInteraction();
+                } else if (id === 'door' && gameState.ratio.synced && !tutorialState.doorOpen) {
+                    // Function to show door command options
+                    const showDoorOptions = () => {
+                        startDialogue("Door", "Pick a command:", [
+                            { text: "'I order you to open!'", action: () => {
+                                startDialogue("Door", "*The door remains silent and unmoving.*", [{ text: "Continue", action: () => {
+                                    getRatioDialogue("The command failed. The door doesn't know what it is. Hint that it needs to be told what it is. Example: 'It doesn't know what it is - try telling it directly.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                                } }]);
+                            }},
+                            { text: "'Open the door please'", action: () => {
+                                startDialogue("Door", "*A silent hum.... no response.*", [{ text: "Continue", action: () => {
+                                    getRatioDialogue("The user tried being polite but the door still didn't respond. The door doesn't know it's a door. Hint that it needs to be told what it is and what to do. Example: 'Being nice won't help if it doesn't know it's a door - tell it what it is.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                                } }]);
+                            }},
+                            { text: "'Act like a door, you are unlocked, now open!'", action: () => {
+                                tutorialState.doorOpen = true;
+
+                                // Analytics: Track door opened
+                                analytics.log('door_opened', {
+                                    timeElapsed: Date.now() - analytics.sessionStart,
+                                    hintShown: tutorialState.doorHintShown
+                                });
+
+                                startDialogue("Door", "*With a deep groan, the door swings open.*", [{ text: "Enter", action: closeDialogue }]);
+                                tutorialState.step = 4;
+                                saveGame();
+                            }},
+                        ]);
+                    };
+
+                    // First time: Show error and RATIO's hint
+                    if (!tutorialState.doorHintShown) {
+                        startDialogue("Door", "Error, command not understood.", [
+                            { text: "Continue", action: () => {
+                                // RATIO immediately steps in with helpful hint
+                                getRatioDialogue("The door just gave an error. Explain that this door forgets what it is sometimes and doesn't know what to do. Tell the user to try telling the door what it's supposed to be and what it should do. Be clear and helpful. Example: 'This door forgets what it is sometimes - try telling it what it's supposed to be.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.", () => {
+                                    // Mark hint as shown and show options
+                                    tutorialState.doorHintShown = true;
+                                    gameState.activeDialogue.options = [
+                                        { text: "Continue", action: showDoorOptions }
+                                    ];
+                                });
+                            }}
+                        ]);
+                    } else {
+                        // Subsequent times: Go directly to options
+                        showDoorOptions();
+                    }
+                } else if (id === 'door' && tutorialState.doorOpen) {
+                    gameState.gameMode = 'transitionToLevel1';
+                    gameState.transitionAlpha = 0;
+                }
+
+            } else if (gameState.gameMode === 'level1') {
+                 if (id === 'cog' || id === 'loom' || id === 'chip') {
+                    if (!gameState.level1State.inventory[id]) {
+                        // Start resonance tuning mini-game
+                        startResonanceTuning(id);
+                    }
+                } else if (id === 'broken_gary') {
+                    if (gameState.level1State.garyFixed) {
+                        getGaryDialogue("The user is talking to you after you have been fixed. Thank them again and offer to help.");
+                    } else {
+                        handleGaryInteraction();
+                    }
+                } else if (id === 'biodome_door') {
+                    if (!gameState.level1State.garyFixed) {
+                        // Don't show any dialogue if Gary isn't fixed yet - door is hidden
+                        return;
+                    } else if (gameState.level1State.levelComplete) {
+                        // Navigate to biodome intro transition screen (works with both local and Netlify)
+                        window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                            ? 'biodome_intro.html'
+                            : '/biodome_intro';
+                    } else {
+                        startDialogue("Ratio", "The Bio-Dome is locked. You'll need to complete Level 1 first by helping GARY.", [
+                            { text: "Understood", action: closeDialogue }
+                        ]);
+                    }
+                }
+            }
+        }
+        
+        function handleRatioSyncInteraction() {
+            const { tutorialState } = gameState;
+            switch(tutorialState.ratioSyncStep) {
+                case 0:
+                    startDialogue("Ratio", "Wait…. Who the hell are you? What are you doing here?", [
+                        { text: "I am just a human…", action: () => {
+                            tutorialState.ratioSyncStep = 1;
+                            handleRatioSyncInteraction();
+                        }},
+                        { text: "I'm… not really sure.", action: () => {
+                            getRatioDialogue("The user says they are not sure why they are here. Respond with a light, playful comment that's a bit grumpy but not mean. Keep it super short, one sentence max.", () => {
+                                tutorialState.ratioSyncStep = 1;
+                                handleRatioSyncInteraction();
+                            });
+                        }}
+                    ]);
+                    break;
+                case 1:
+                    startDialogue("Ratio", "Nevermind... I was about to head inside. Sync with me if you want to come.", [
+                        { text: "Okay, let's sync.", action: () => {
+                            gameState.ratio.synced = true;
+                            tutorialState.step = 3;
+                            gameState.ratio.x = gameState.player.x - 50;
+                            gameState.ratio.y = gameState.player.y;
+
+                            // Analytics: Track Ratio sync
+                            analytics.log('ratio_synced', {
+                                timeElapsed: Date.now() - analytics.sessionStart
+                            });
+
+                            getRatioDialogue("The user agreed to sync. Welcome them and point them toward the door. Hint that you cannot open it yourself. Example sentences you could use: 'Welcome to the mess. Let's go, door's that way.' or 'All right then, here's the door. Give me a hand, will you? Obviously I don't have one.' Keep it super short, one sentence max.");
+                        }},
+                        { text: "Emmmm, no that sounds weird.", action: () => {
+                            getRatioDialogue("The user is refusing to sync. Tell them there's nowhere else to go and nothing else to do - they need to sync. Use one of these examples or something VERY similar (don't change much): 'Well, there's nowhere else to go anyway.' or 'Suit yourself, but there's nothing else to do here.' or 'Your call, friend, but you're kind of stuck otherwise.' Keep it super short, one sentence max. Stick close to the examples.");
+                        }}
+                    ]);
+                    break;
+            }
+        }
+
+        function handleGaryInteraction() {
+            const { level1State } = gameState;
+            if (!level1State.inventory.cog || !level1State.inventory.loom || !level1State.inventory.chip) {
+                // Fix: Set interaction started to TRUE so chips become visible/interactable
+                level1State.garyQuestActive = true;
+                saveGame(); // Ensure state is saved immediately so chips persist
+                getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to find the parts first by looking around. Example: 'We need to find the parts first - look around the yard.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention specific locations like garages, bins, or toolboxes. Just say 'around here' or 'the yard' or 'the place'.");
+                return;
+            }
+
+            switch (level1State.garyDialogueStep) {
+                case 0:
+                    startDialogue("GARY", "*whirr...* Identity not found... State purpose...", [
+                        { text: "I want to help you come back to life.", action: () => {
+                            level1State.garyDialogueStep = 1;
+                            level1State.garyQuestActive = true;
+                            handleGaryInteraction();
+                        }},
+                        { text: "I want to pass to the next level.", action: () => { startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*"); }},
+                    ]);
+                    break;
+                case 1:
+                     startDialogue("RATIO", "To build GARY into life, what is most needed? Put in the first component.", [
+                        { text: "Install Brain Chip (To think)", action: () => { level1State.garyDialogueStep = 2; handleGaryInteraction(); }},
+                        { text: "Install Language Chip (To speak)", action: () => {
+                            startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
+                                startDialogue("RATIO", "Language without a mind??? GARY must first exist before it can talk.");
+                                level1State.garyDialogueStep = 0;
+                            }}]);
+                        }},
+                        { text: "Install Personality Chip (To feel)", action: () => {
+                            startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
+                                startDialogue("RATIO", "Feeling without thinking is chaos! GARY must first exist before it can feel.");
+                                level1State.garyDialogueStep = 0;
+                            }}]);
+                        }}
+                    ]);
+                    break;
+                case 2:
+                     startDialogue("GARY", "I compute, therefore I am... Acknowledged.", [{ text: "Continue", action: () => {
+                        startDialogue("RATIO", "A mind is formed. Now make him talk? Present the second module.", [
+                            { text: "Install Language Chip (To speak)", action: () => { level1State.garyDialogueStep = 3; handleGaryInteraction(); }},
+                            { text: "Install Personality Chip (To feel)", action: () => {
+                                startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.");
+                                level1State.garyDialogueStep = 0;
+                            }}
+                        ]);
+                    }}]);
+                    break;
+                case 3:
+                    startDialogue("GARY", "Language online. My thoughts have structure.", [{ text: "Continue", action: () => {
+                        startDialogue("RATIO", "Present the final module.", [
+                            { text: "Install Personality Chip (To feel)", action: () => {
+                                level1State.garyFixed = true;
+                                level1State.garyAnimationState = 'wakingUp';
+                                startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{ text: "Continue", action: () => {
+                                    level1State.levelComplete = true;
+                                    level1State.completeMessageTimer = 5;
+
+                                    // Analytics: Track Level 1 completion
+                                    analytics.log('level_complete', {
+                                        level: 1,
+                                        totalTime: Date.now() - analytics.sessionStart
+                                    });
+
+                                    saveGame();
+                                    closeDialogue();
+                                }}]);
+                            }}
+                        ]);
+                    }}]);
+                    break;
+            }
+        }
+        
+        function handleKeyDown(e) {
+            const { gameMode, activeDialogue, resonanceState } = gameState;
+            const key = e.key.toLowerCase();
+
+            if (gameMode === 'introPopup') {
+                if (key === 'e') {
+                    gameState.gameMode = 'transitionToTutorial';
+                    
+                    // Analytics: Track tutorial start (delayed from start button)
+                    analytics.log('tutorial_start', {
+                        playerPos: { x: gameState.player.x, y: gameState.player.y }
+                    });
+                }
+                return;
+            }
+
+            if (gameMode === 'startScreen' || gameMode.startsWith('transition')) return;
+
+            // Handle resonance tuning input
+            if (resonanceState.isActive) {
+                if (key === 'escape') {
+                    endResonanceTuning(false);
+                    return;
+                }
+
+                // Check if key matches current pattern position
+                const expectedKey = resonanceState.pattern[resonanceState.currentIndex];
+
+                if (key === expectedKey) {
+                    // Correct key!
+                    resonanceState.lastCorrect = true;
+                    resonanceState.feedbackTimer = 0.3;
+                    resonanceState.currentIndex++;
+                    resonanceState.successCount++;
+                    resonanceState.syncProgress = resonanceState.successCount / resonanceState.requiredSuccess;
+
+                    // Create success particle
+                    createResonanceParticle(true);
+
+                    // Check if pattern is complete
+                    if (resonanceState.successCount >= resonanceState.requiredSuccess) {
+                        setTimeout(() => endResonanceTuning(true), 500);
+                    }
+                } else if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+                    // Wrong key!
+                    resonanceState.lastCorrect = false;
+                    resonanceState.feedbackTimer = 0.3;
+                    resonanceState.currentIndex = 0; // Reset pattern on mistake
+                    resonanceState.successCount = 0;
+                    resonanceState.syncProgress = 0;
+
+                    // Create fail particle
+                    createResonanceParticle(false);
+                }
+                return;
+            }
+
+            if (activeDialogue.isActive) {
+                if (key === 'w' || key === 'arrowup') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
+                } else if (key === 's' || key === 'arrowdown') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
+                } else if (key === 'e') {
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex = activeDialogue.text.length;
+                    } else if (activeDialogue.options.length > 0) {
+                        activeDialogue.options[activeDialogue.selectedOption].action();
+                    } else {
+                        closeDialogue();
+                    }
+                }
+                return;
+            }
+
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = true;
+                gameState.player.moving = true;
+            }
+            if (key === 'e') handleInteraction();
+        }
+
+        function createResonanceParticle(success) {
+            const { resonanceState } = gameState;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            for (let i = 0; i < 5; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 50 + Math.random() * 50;
+                resonanceState.particles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1.0,
+                    color: success ? resonancePatterns[resonanceState.currentPiece].color : '#FF0000'
+                });
+            }
+        }
+        
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (gameState.keys.hasOwnProperty(key)) gameState.keys[key] = false;
+            if (!gameState.keys.w && !gameState.keys.a && !gameState.keys.s && !gameState.keys.d) {
+                gameState.player.moving = false;
+            }
+        });
+        
+        function startGame() {
+            if (gameState.gameMode !== 'startScreen') return;
+            gameState.gameMode = 'introPopup';
+            startButton.style.display = 'none';
+            startBackgroundMusic(); // Start music when game starts
+        }
+        
+        function checkCollision(rectA, rectB) {
+            const buffer = 5; 
+            return rectA.x < rectB.x + rectB.width + buffer && rectA.x + rectA.width + buffer > rectB.x &&
+                   rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
+        }
+
+        function update(deltaTime) {
+            const { gameMode } = gameState;
+            
+            handlePlayerAnimation(deltaTime);
+
+            if (gameMode === 'startScreen') {
+                updateStartScreenWander(gameState.startScreenState.finn, gameState.player);
+                updateStartScreenWander(gameState.startScreenState.ratio);
+                updateLeaves(deltaTime);
+                updateGaryStartScreenAnimation(deltaTime);
+
+            } else if (gameMode === 'transitionToTutorial' || gameMode === 'transitionToLevel1') {
+                gameState.transitionAlpha += 2.0 * deltaTime;
+                if (gameState.transitionAlpha >= 1) {
+                    if (gameMode === 'transitionToLevel1') {
+                        gameState.gameMode = 'level1';
+                        gameState.player.x = canvas.width / 2;
+                        gameState.player.y = canvas.height - 150;
+                        gameState.ratio.x = gameState.player.x - 50;
+                        gameState.ratio.y = gameState.player.y;
+                    } else {
+                        gameState.gameMode = 'tutorial';
+                        gameState.player.x = canvas.width / 2;
+                        gameState.player.y = canvas.height - 150;
+                        gameState.ratio.x = tutorialInteractables.find(i => i.id === 'ratio_start').x;
+                        gameState.ratio.y = tutorialInteractables.find(i => i.id === 'ratio_start').y;
+
+                    }
+                    gameState.transitionAlpha = 0;
+                }
+
+            } else if (gameMode === 'tutorial' || gameMode === 'level1') {
+                if (!gameState.tutorialState.controlsExplained && gameMode === 'tutorial') {
+                    startDialogue("Tutorial", "Use W/A/S/D keys to move your character. Press E to interact with objects and characters.", [
+                        { text: "Got it!", action: () => {
+                            gameState.tutorialState.controlsExplained = true;
+                            closeDialogue();
+                        }}
+                    ]);
+                    return; // Pause game update until dialogue is closed
+                }
+
+                // Update resonance tuning
+                if (gameState.resonanceState.isActive) {
+                    const { resonanceState } = gameState;
+
+                    // Update pulse timer
+                    resonanceState.pulseTimer += deltaTime;
+                    if (resonanceState.pulseTimer >= resonanceState.pulseDuration) {
+                        resonanceState.pulseTimer = 0;
+                    }
+
+                    // Update feedback timer
+                    if (resonanceState.feedbackTimer > 0) {
+                        resonanceState.feedbackTimer -= deltaTime;
+                    }
+
+                    // Update particles
+                    resonanceState.particles = resonanceState.particles.filter(p => {
+                        p.x += p.vx * deltaTime;
+                        p.y += p.vy * deltaTime;
+                        p.life -= deltaTime * 2;
+                        return p.life > 0;
+                    });
+
+                    gameState.player.moving = false;
+                    return; // Don't process movement during resonance tuning
+                }
+
+                if (gameState.activeDialogue.isActive) {
+                    const { activeDialogue } = gameState;
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex += 30 * deltaTime;
+                    }
+                    gameState.player.moving = false;
+                    return;
+                }
+                const { player, ratio, keys, tutorialState, level1State } = gameState;
+                let moved = false;
+                let newPlayerX = player.x;
+                let newPlayerY = player.y;
+
+                if (keys.w) { newPlayerY -= player.speed * deltaTime; player.frameY = 3; moved = true; }
+                if (keys.s) { newPlayerY += player.speed * deltaTime; player.frameY = 0; moved = true; }
+                if (keys.a) { newPlayerX -= player.speed * deltaTime; player.frameY = 2; ratio.direction = 'left'; moved = true; }
+                if (keys.d) { newPlayerX += player.speed * deltaTime; player.frameY = 1; ratio.direction = 'right'; moved = true; }
+                
+                // Apply boundary collision detection
+                const currentBoundaries = gameMode === 'tutorial' ? gameState.tutorialBoundaries : gameState.level1Boundaries;
+                const currentAdjustments = gameMode === 'tutorial' ? gameState.tutorialBoundaryAdjustments : gameState.level1BoundaryAdjustments;
+
+                let collisionDetected = false;
+                for (const boundary of currentBoundaries) {
+                    let { x, y, width, height } = boundary;
+                    const adjustment = currentAdjustments[boundary.id];
+                    if (adjustment) {
+                        x += adjustment.adjustX;
+                        y += adjustment.adjustY;
+                        width += adjustment.adjustWidth;
+                        height += adjustment.adjustHeight;
+                    }
+
+                    if (checkCollision({ x: newPlayerX, y: newPlayerY, width: player.width, height: player.height }, { x, y, width, height })) {
+                        collisionDetected = true;
+                        break;
+                    }
+                }
+
+                if (!collisionDetected) {
+                    player.x = newPlayerX;
+                    player.y = newPlayerY;
+                }
+
+                if (moved) {
+                    // tutorialState.controlsHintTimer = 0; // This was removed previously
+                }
+
+                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+                player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+                
+                if (ratio.synced) {
+                    const dx = player.x - ratio.x; const dy = player.y - ratio.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > ratio.followDistance) {
+                        ratio.x += (dx / distance) * ratio.speed * deltaTime; ratio.y += (dy / distance) * ratio.speed * deltaTime;
+                    }
+                }
+                
+                gameState.nearbyObject = null;
+                const currentInteractables = gameMode === 'tutorial' ? tutorialInteractables : level1Interactables;
+                for (const obj of currentInteractables) {
+                    if (gameMode === 'level1' && obj.id.match(/cog|loom|chip/) && level1State.inventory[obj.id]) continue;
+                    // Fix: Prevent interaction with chips before Gary interaction starts
+                    if (gameMode === 'level1' && obj.id.match(/cog|loom|chip/) && !level1State.garyQuestActive) continue;
+                    
+                    if (gameMode === 'level1' && obj.id === 'biodome_door' && !level1State.garyFixed) continue;
+                    if (checkCollision(player, obj)) {
+                        gameState.nearbyObject = obj;
+                        break;
+                    }
+                }
+                if (tutorialState.controlsHintTimer > 0) tutorialState.controlsHintTimer -= deltaTime;
+                if (!ratio.synced && !gameState.activeDialogue.isActive && tutorialState.ratioSyncStep === 1) {
+                    handleRatioSyncInteraction();
+                }
+
+                if (gameMode === 'level1') {
+                    updateGaryAnimation(deltaTime);
+                    if(level1State.completeMessageTimer > 0) {
+                        level1State.completeMessageTimer -= deltaTime;
+                    }
+                }
+            }
+        }
+        
+        function updateStartScreenWander(character, deltaTime, playerChar = null) {
+            if (character.pauseTimer > 0) {
+                character.pauseTimer -= deltaTime;
+                character.moving = false;
+                if (playerChar) playerChar.moving = false;
+                return;
+            }
+
+            character.moving = true;
+            if (playerChar) playerChar.moving = true;
+
+            const dx = character.targetX - character.x;
+            const dy = character.targetY - character.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 5) {
+                character.pauseTimer = Math.random() * 3 + 2;
+                character.targetX = Math.random() * (canvas.width - 100);
+                character.targetY = Math.random() * (canvas.height - 150) + 50;
+                return;
+            }
+
+            character.x += (dx / dist) * character.speed * deltaTime;
+            character.y += (dy / dist) * character.speed * deltaTime;
+
+            if (playerChar) {
+                if (dx > 0) playerChar.frameY = 1;
+                else if (dx < 0) playerChar.frameY = 2;
+            }
+        }
+
+        function updateLeaves(deltaTime) {
+            if (gameState.leaves.length < 150) { // Ensure there are enough leaves
+                createLeaves(150 - gameState.leaves.length);
+            }
+            for (const leaf of gameState.leaves) {
+                leaf.y += leaf.speedY * 60 * deltaTime;
+                leaf.x += leaf.speedX * 60 * deltaTime;
+                leaf.rotation += leaf.rotationSpeed * 60 * deltaTime;
+                
+                if (leaf.y > canvas.height) {
+                    leaf.y = -20;
+                    leaf.x = Math.random() * canvas.width;
+                    leaf.speedX = Math.sin(Math.random() * Math.PI * 2) * 0.2;
+                    leaf.opacity = Math.random() * 0.5 + 0.3; // Reset opacity
+                    leaf.size = Math.random() * 10 + 5; // Reset size
+                    leaf.speedY = Math.random() * 0.5 + 0.2; // Reset speed
+                }
+            }
+        }
+
+        function updateGaryStartScreenAnimation(deltaTime) {
+            const { gary } = gameState.startScreenState;
+            gary.timer += deltaTime;
+            if (gary.timer >= 1 / GARY_IDLE_FPS) {
+                gary.timer = 0;
+                gary.frame = (gary.frame + 1) % 3;
+            }
+        }
+
+        function updateGaryAnimation(deltaTime) {
+            const { level1State } = gameState;
+            if (level1State.garyAnimationState === 'off') return;
+
+            const WAKE_UP_FRAMES = 4;
+            const STAND_UP_FRAMES = 5;
+            const IDLE_FRAMES = 3;
+            const WAKE_STAND_FPS = 5;
+
+            level1State.garyAnimationTimer += deltaTime;
+
+            switch (level1State.garyAnimationState) {
+                case 'wakingUp':
+                    if (level1State.garyAnimationTimer >= 1 / WAKE_STAND_FPS) {
+                        level1State.garyAnimationTimer = 0;
+                        level1State.garyAnimationFrame++;
+                        if (level1State.garyAnimationFrame >= WAKE_UP_FRAMES) {
+                            level1State.garyAnimationState = 'idle'; // Transition directly to idle
+                            level1State.garyAnimationFrame = 0;
+                        }
+                    }
+                    break;
+                case 'idle':
+                    if (level1State.garyAnimationTimer >= 1 / GARY_IDLE_FPS) {
+                        level1State.garyAnimationTimer = 0;
+                        level1State.garyAnimationFrame = (level1State.garyAnimationFrame + 1) % IDLE_FRAMES;
+                    }
+                    break;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Zoom removed per user request
+
+            const { gameMode } = gameState;
+            
+            if (gameMode === 'startScreen') {
+                drawStartScreen();
+            } else if (gameMode === 'introPopup') {
+                // Draw only the intro popup (solid background)
+                drawIntroPopup();
+            } else if (gameMode.startsWith('transition')) {
+                const bgImage = gameMode === 'transitionToLevel1' ? level1MapImage : doorClosedImage;
+                if (bgImage.complete) ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = `rgba(0, 0, 0, ${gameState.transitionAlpha})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            } else if (gameMode === 'tutorial') {
+                drawTutorial();
+            } else if (gameMode === 'level1') {
+                drawLevel1();
+            }
+        }
+
+        function drawIntroPopup() {
+            // Draw introduction background image as full screen background
+            if (introductionImage.complete && introductionImage.naturalWidth > 0) {
+                ctx.drawImage(introductionImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                // Fallback to black background if image missing
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw textbox background with gradient
+            const boxWidth = 825;
+            const boxHeight = 488;
+            const x = (canvas.width - boxWidth) / 2;
+            const y = (canvas.height - boxHeight) / 2;
+
+            // Draw main box with gradient
+            const gradient = ctx.createLinearGradient(x, y, x, y + boxHeight);
+            gradient.addColorStop(0, 'rgba(15, 25, 45, 0.855)');
+            gradient.addColorStop(0.5, 'rgba(25, 35, 60, 0.855)');
+            gradient.addColorStop(1, 'rgba(15, 25, 45, 0.855)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x, y, boxWidth, boxHeight);
+
+            // Draw border with glow effect
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#00FFFF';
+            ctx.shadowBlur = 15;
+            ctx.strokeRect(x, y, boxWidth, boxHeight);
+            ctx.shadowBlur = 0;
+
+            // Draw inner accent lines
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 10, y + 10, boxWidth - 20, boxHeight - 20);
+
+            // Draw text on top of the textbox background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+
+            ctx.font = '24px "Roboto Mono"';
+            ctx.fillText("In a world not so far from ours, you are about to", canvas.width / 2, y + 120);
+            ctx.fillText("meet different kinds of AI characters.", canvas.width / 2, y + 160);
+            ctx.fillText("Some will help you. Some won't.", canvas.width / 2, y + 210);
+            ctx.fillText("Some are clever. Some… not so much.", canvas.width / 2, y + 250);
+
+            ctx.font = 'bold 28px "Roboto Mono"';
+            ctx.fillStyle = '#FFFF00'; // Yellow
+            ctx.fillText("Press [E] to play!", canvas.width / 2, y + 350);
+        }
+        
+        function drawStartScreen() {
+            if (startScreenImage.complete) ctx.drawImage(startScreenImage, 0, 0, canvas.width, canvas.height);
+            
+            drawLeaves();
+
+            ctx.textAlign = 'center';
+            ctx.font = '70px "Press Start 2P"';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.shadowColor = "#00ffff";
+            ctx.shadowBlur = 20;
+            ctx.fillText("AI Academy", canvas.width / 2, 200);
+            ctx.shadowBlur = 0;
+            
+            const { finn: startFinn, ratio: startRatio, gary: startGary } = gameState.startScreenState;
+            const player = gameState.player;
+            
+            if (playerImage.complete) {
+                const frameX = player.moving ? player.frameX : 0;
+                ctx.drawImage(playerImage, frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                              player.spriteWidth, player.spriteHeight, startFinn.x, startFinn.y, PLAYER_DISPLAY_WIDTH, PLAYER_DISPLAY_HEIGHT);
+            }
+            if (ratioImageR.complete) ctx.drawImage(ratioImageR, startRatio.x, startRatio.y, RATIO_DISPLAY_WIDTH, RATIO_DISPLAY_HEIGHT);
+
+            // GARY removed from start screen
+            // if (fixedGaryIdleImage.complete) {
+            //     const frameHeight = fixedGaryIdleImage.height / 3;
+            //     ctx.drawImage(fixedGaryIdleImage, 0, startGary.frame * frameHeight,
+            //                   fixedGaryIdleImage.width, frameHeight,
+            //                   startGary.x, startGary.y,
+            //                   GROUNDSKEEPER_DISPLAY_WIDTH * 1.8, GROUNDSKEEPER_DISPLAY_HEIGHT * 1.8);
+            // }
+        }
+
+        function drawLeaves() {
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Changed to white for snow
+            for (const leaf of gameState.leaves) {
+                // Calculate the new size, 50% bigger
+                const drawSize = leaf.size * 2.5;
+
+                ctx.save();
+                ctx.translate(leaf.x, leaf.y);
+                ctx.rotate(leaf.rotation * Math.PI / 180);
+                
+                if (snowflakeImage.complete && snowflakeImage.naturalWidth > 0) {
+                    ctx.globalAlpha = leaf.opacity;
+                    
+                    // Use drawSize and ensure it's centered
+                    ctx.drawImage(snowflakeImage, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+                    
+                    ctx.globalAlpha = 1.0; // Reset global alpha
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Fallback
+                    
+                    // Use drawSize and fix centering. 
+                    // (-drawSize / 2) makes the square's center align with the rotation point.
+                    ctx.fillRect(-drawSize / 2, -drawSize / 2, drawSize, drawSize); // centered square for snow
+                }
+                
+                ctx.restore();
+            }
+        }
+
+
+        function drawTutorial() {
+            const backgroundImage = gameState.tutorialState.doorOpen ? doorOpenImage : doorClosedImage;
+            if (backgroundImage.complete) {
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
+            
+            const { tutorialState, ratio, player } = gameState;
+
+            let ratioDrawX = ratio.synced ? ratio.x : tutorialInteractables.find(i => i.id === 'ratio_start').x;
+            let ratioDrawY = ratio.synced ? ratio.y : tutorialInteractables.find(i => i.id === 'ratio_start').y;
+            const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
+            if (ratioImg.complete) ctx.drawImage(ratioImg, ratioDrawX, ratioDrawY, ratio.width, ratio.height);
+
+            if (playerImage.complete) ctx.drawImage( playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height );
+            
+            drawProgressionBar();
+            drawHud();
+            drawBoundaries(); // Draw boundaries after other elements
+            if (gameState.activeDialogue.isActive) drawDialogueBox();
+        }
+
+        function drawLevel1() {
+            if (level1MapImage.complete) ctx.drawImage(level1MapImage, 0, 0, canvas.width, canvas.height);
+            
+            const { level1State, player, ratio } = gameState;
+
+            level1Interactables.forEach(obj => {
+                if (obj.id.match(/cog|loom|chip/) && !level1State.inventory[obj.id] && level1State.garyQuestActive) {
+                    let itemImage;
+                    if (obj.id === 'cog') itemImage = cogImage;
+                    else if (obj.id === 'loom') itemImage = loomImage;
+                    else if (obj.id === 'chip') itemImage = chipImage;
+
+                    if (itemImage && itemImage.complete) {
+                         const pulse = Math.abs(Math.sin(Date.now() * 0.005));
+                         ctx.globalAlpha = 0.8 + pulse * 0.2;
+                         ctx.drawImage(itemImage, obj.x, obj.y, obj.width * 2.5, obj.height * 2.5);
+                         ctx.globalAlpha = 1;
+                    }
+                } else if (obj.id === 'biodome_door' && level1State.garyFixed) {
+                    // Draw mysterious arrow pointing to the door (only after Gary is fixed)
+                    
+                    // Initialize flash counters if not present
+                    if (typeof level1State.arrowFlashCount === 'undefined') {
+                        level1State.arrowFlashCount = 0;
+                        level1State.arrowFlashTimer = Date.now();
+                    }
+
+                    // Only draw if we haven't flashed 5 times yet
+                    if (level1State.arrowFlashCount < 7) {
+                        const now = Date.now();
+                        const elapsed = now - level1State.arrowFlashTimer;
+                        const flashDuration = 1400; // 1.2 seconds per flash (slower)
+
+                        // Update counter
+                        if (elapsed >= flashDuration) {
+                            level1State.arrowFlashTimer = now;
+                            level1State.arrowFlashCount++;
+                        }
+
+                        // Draw only during the "on" phase (first 60% of duration)
+                        if (elapsed < flashDuration * 0.6 && level1State.arrowFlashCount < 7) {
+                            // Arrow positioned above the door, pointing upward
+                            const arrowX = obj.x + obj.width / 2 + 39; // Center horizontally over door, shifted 50px right
+                            const arrowY = obj.y - 150; // Moved further up (changed from -80)
+
+                            ctx.save();
+                            ctx.translate(arrowX, arrowY);
+
+                            // Smaller size (1.5x size - changed from 2.5x)
+                            ctx.scale(1.5, 1.5);
+                            ctx.rotate(-Math.PI / 2); // Rotate to point upward
+
+                            // Dimmer cyan color (changed brightness)
+                                                                ctx.fillStyle = 'rgba(218, 165, 32, 0.6)';
+                                                                ctx.shadowColor = 'rgba(218, 165, 32, 0.4)';                            ctx.shadowBlur = 10;
+
+                            // Draw arrow shape pointing up
+                            ctx.beginPath();
+                            ctx.moveTo(-25, 0); // Tip
+                            ctx.lineTo(-18, -9); // Top wing
+                            ctx.lineTo(-18, -4);
+                            ctx.lineTo(0, -4); // Shaft top
+                            ctx.lineTo(0, 4); // Shaft bottom
+                            ctx.lineTo(-18, 4);
+                            ctx.lineTo(-18, 9); // Bottom wing
+                            ctx.closePath();
+                            ctx.fill();
+
+                            ctx.restore();
+                        }
+                    }
+                }
+            });
+
+            drawGary();
+
+            const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
+            if (ratioImg.complete) ctx.drawImage(ratioImg, ratio.x, ratio.y, ratio.width, ratio.height);
+
+            if (playerImage.complete) ctx.drawImage( playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height );
+            
+            drawProgressionBar();
+            drawHud();
+            drawBoundaries(); // Draw boundaries after other elements
+            if (level1State.completeMessageTimer > 0) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 80, canvas.width, 60);
+                ctx.font = '40px "Press Start 2P"';
+                ctx.fillStyle = '#00FFFF';
+                ctx.textAlign = 'center';
+                ctx.fillText("Level 1 Completed!", canvas.width / 2, 125);
+            }
+            if (gameState.resonanceState.isActive) drawResonanceTuning();
+            if (gameState.activeDialogue.isActive) drawDialogueBox();
+        }
+
+        function drawGary() {
+            const { level1State } = gameState;
+            const garyInteractable = level1Interactables.find(i => i.id === 'broken_gary');
+            const garyX = garyInteractable.x;
+            const garyY = garyInteractable.y;
+                        const garyWidth = garyInteractable.width * 1.35; 
+                        const garyHeight = garyInteractable.height * 1.35;
+            ctx.globalAlpha = 1;
+
+            switch(level1State.garyAnimationState) {
+                case 'off':
+                    if (brokenGaryImage.complete) {
+                        ctx.drawImage(brokenGaryImage, garyX, garyY, garyInteractable.width * 1.5, garyInteractable.height * 1.5);
+                    }
+                    break;
+                case 'wakingUp':
+                    if (garyWakeUpImage.complete) {
+                        const frameHeight = garyWakeUpImage.height / 4;
+                        ctx.drawImage(garyWakeUpImage, 0, level1State.garyAnimationFrame * frameHeight, garyWakeUpImage.width, frameHeight, garyX, garyY, garyWidth, garyHeight);
+                    }
+                    break;
+                case 'standingUp':
+                     if (garyStandUpImage.complete) {
+                        const frameHeight = garyStandUpImage.height / 5;
+                        ctx.drawImage(garyStandUpImage, 0, level1State.garyAnimationFrame * frameHeight, garyStandUpImage.width, frameHeight, garyX, garyY, garyWidth, garyHeight);
+                    }
+                    break;
+                case 'idle':
+                     if (fixedGaryIdleImage.complete) {
+                        const frameHeight = fixedGaryIdleImage.height / 3;
+                        ctx.drawImage(fixedGaryIdleImage, 0, level1State.garyAnimationFrame * frameHeight, fixedGaryIdleImage.width, frameHeight, garyX, garyY, garyWidth, garyHeight);
+                    }
+                    break;
+            }
+        }
+
+        function drawResonanceTuning() {
+            const { resonanceState } = gameState;
+            if (!resonanceState.currentPiece) return;
+
+            const pattern = resonancePatterns[resonanceState.currentPiece];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Draw dark overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw component image in center with glow
+            const componentImages = { cog: cogImage, loom: loomImage, chip: chipImage };
+            const componentImg = componentImages[resonanceState.currentPiece];
+
+            if (componentImg && componentImg.complete) {
+                const imgSize = 120;
+                const pulse = Math.sin(resonanceState.pulseTimer / resonanceState.pulseDuration * Math.PI * 2) * 0.5 + 0.5;
+
+                // Glow effect
+                ctx.shadowColor = pattern.color;
+                ctx.shadowBlur = 30 + pulse * 20;
+                ctx.globalAlpha = 0.8 + pulse * 0.2;
+                ctx.drawImage(componentImg, centerX - imgSize/2, centerY - imgSize/2, imgSize, imgSize);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+            }
+
+            // Draw title
+            ctx.font = 'bold 36px "Roboto Mono"';
+            ctx.fillStyle = pattern.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(pattern.name, centerX, 100);
+
+            // Draw description
+            ctx.font = '20px "Roboto Mono"';
+            ctx.fillStyle = '#AAAAAA';
+            ctx.fillText(pattern.description, centerX, 140);
+
+            // Draw pattern sequence
+            const patternY = centerY + 150;
+            const spacing = 70;
+            const startX = centerX - (pattern.display.length * spacing) / 2 + spacing / 2;
+
+            pattern.display.forEach((arrow, index) => {
+                const x = startX + index * spacing;
+                const isCurrentStep = index === resonanceState.currentIndex;
+                const isPastStep = index < resonanceState.currentIndex;
+
+                // Pulse effect for current step
+                const pulseScale = isCurrentStep ? (Math.sin(resonanceState.pulseTimer / resonanceState.pulseDuration * Math.PI * 2) * 0.2 + 1) : 1;
+
+                // Circle background
+                ctx.beginPath();
+                ctx.arc(x, patternY, 25 * pulseScale, 0, Math.PI * 2);
+                ctx.fillStyle = isPastStep ? pattern.color : (isCurrentStep ? 'rgba(255, 255, 255, 0.2)' : 'rgba(100, 100, 100, 0.3)');
+                ctx.fill();
+
+                if (isCurrentStep) {
+                    ctx.strokeStyle = pattern.color;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+
+                // Arrow
+                ctx.font = `${isCurrentStep ? '32' : '28'}px "Roboto Mono"`;
+                ctx.fillStyle = isPastStep ? '#000' : (isCurrentStep ? pattern.color : '#666');
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(arrow, x, patternY);
+            });
+
+            // Draw progress bar
+            const barWidth = 400;
+            const barHeight = 30;
+            const barX = centerX - barWidth / 2;
+            const barY = centerY + 220;
+
+            // Background
+            ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Progress fill
+            ctx.fillStyle = pattern.color;
+            ctx.fillRect(barX, barY, barWidth * resonanceState.syncProgress, barHeight);
+
+            // Border
+            ctx.strokeStyle = pattern.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            // Progress text
+            ctx.font = '18px "Roboto Mono"';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${resonanceState.successCount} / ${resonanceState.requiredSuccess}`, centerX, barY + barHeight + 25);
+
+            // Draw feedback
+            if (resonanceState.feedbackTimer > 0) {
+                const alpha = resonanceState.feedbackTimer / 0.3;
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 40px "Roboto Mono"';
+                ctx.fillStyle = resonanceState.lastCorrect ? pattern.color : '#FF0000';
+                ctx.textAlign = 'center';
+                ctx.fillText(resonanceState.lastCorrect ? '✓ SYNC!' : '✗ DESYNC!', centerX, centerY - 100);
+                ctx.globalAlpha = 1;
+            }
+
+            // Draw particles
+            resonanceState.particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Instructions
+            ctx.font = '18px "Roboto Mono"';
+            ctx.fillStyle = '#AAAAAA';
+            ctx.textAlign = 'center';
+            ctx.fillText('Press WASD keys to match the rhythm', centerX, canvas.height - 80);
+            ctx.fillText('ESC to cancel', centerX, canvas.height - 50);
+        }
+
+        let frameCounter = 0;
+        const playerAnimationFPS = 10; // Animate at 10 frames per second
+        function handlePlayerAnimation(deltaTime) {
+            if (gameState.player.moving || (gameState.gameMode === 'startScreen' && gameState.startScreenState.finn.moving)) {
+                frameCounter += deltaTime;
+                if (frameCounter >= 1 / playerAnimationFPS) {
+                    frameCounter = 0;
+                    gameState.player.frameX = (gameState.player.frameX + 1) % 4;
+                }
+            } else {
+                gameState.player.frameX = 0;
+            }
+        }
+
+        function drawProgressionBar() {
+            const barWidth = 600;
+            const barHeight = 40;
+            const barX = (canvas.width / 2) - (barWidth / 2);
+            const barY = 20;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            ctx.strokeStyle = '#888';
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            ctx.font = '18px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const inTutorial = gameState.gameMode === 'tutorial';
+            const inLevel1 = gameState.gameMode === 'level1';
+
+            ctx.fillStyle = inTutorial || inLevel1 ? '#00FFFF' : '#555';
+            ctx.fillText("Tutorial", barX + (barWidth / 6), barY + barHeight / 2);
+
+            ctx.fillStyle = '#888';
+            ctx.fillText("-->", barX + (barWidth / 3), barY + barHeight / 2);
+
+            ctx.fillStyle = inLevel1 ? '#00FFFF' : '#555';
+            ctx.fillText("Level 1", barX + (barWidth / 2), barY + barHeight / 2);
+
+            ctx.fillStyle = '#888';
+            ctx.fillText("-->", barX + (barWidth * 2 / 3), barY + barHeight / 2);
+
+            ctx.fillStyle = '#555';
+            ctx.fillText("Level 2", barX + (barWidth * 5 / 6), barY + barHeight / 2);
+        }
+
+        function drawHud() {
+            if (gameState.gameMode === 'level1') {
+                const currentInventory = gameState.level1State.inventory;
+                const invWidth = 350;
+                const invHeight = 180;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
+                ctx.fillRect(canvas.width - invWidth - 20, 20, invWidth, invHeight);
+                ctx.strokeStyle = '#999'; 
+                ctx.strokeRect(canvas.width - invWidth - 20, 20, invWidth, invHeight);
+                
+                ctx.fillStyle = '#FFF'; 
+                ctx.font = '28px "Roboto Mono"'; 
+                ctx.textAlign = 'left';
+                ctx.fillText("INVENTORY", canvas.width - invWidth + 20, 65);
+
+                ctx.font = '22px "Roboto Mono"';
+                ctx.fillStyle = currentInventory.cog ? '#FFD700' : '#555';
+                ctx.fillText("- Brain Chip", canvas.width - invWidth + 20, 105);
+                ctx.fillStyle = currentInventory.loom ? '#00BFFF' : '#555';
+                ctx.fillText("- Language Chip", canvas.width - invWidth + 20, 135);
+                ctx.fillStyle = currentInventory.chip ? '#FF69B4' : '#555';
+                ctx.fillText("- Personality Chip", canvas.width - invWidth + 20, 165);
+            }
+
+            if (!gameState.activeDialogue.isActive) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+                ctx.textAlign = 'center'; ctx.font = '22px "Roboto Mono"'; ctx.fillStyle = '#FFFFFF';
+                if (gameState.nearbyObject) {
+                    const textPart1 = "Press ";
+                    const textPart2 = "[E]";
+                    const textPart3 = gameState.nearbyObject.id === 'door'
+                        ? ` to open the door`
+                        : (gameState.nearbyObject.id === 'cog' || gameState.nearbyObject.id === 'loom' || gameState.nearbyObject.id === 'chip')
+                        ? ` to COLLECT the ${gameState.nearbyObject.name}`
+                        : ` to interact with ${gameState.nearbyObject.name}`;
+
+                    // Save current textAlign
+                    const originalTextAlign = ctx.textAlign;
+                    ctx.textAlign = 'left';
+
+                    // Measure individual parts
+                    const text1Width = ctx.measureText(textPart1).width;
+                    const text2Width = ctx.measureText(textPart2).width;
+                    const text3Width = ctx.measureText(textPart3).width;
+
+                    // Calculate total width for centering the entire message
+                    const totalWidth = text1Width + text2Width + text3Width;
+
+                    // Calculate the starting X for the first part so the whole message is centered
+                    let currentX = (canvas.width / 2) - (totalWidth / 2);
+
+                    // Draw each part with its specific color
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(textPart1, currentX, canvas.height - 30);
+                    currentX += text1Width;
+
+                    ctx.fillStyle = '#FFFF00'; // Yellow for [E]
+                    ctx.fillText(textPart2, currentX, canvas.height - 30);
+                    currentX += text2Width;
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(textPart3, currentX, canvas.height - 30);
+
+                    // Restore original textAlign
+                    ctx.textAlign = originalTextAlign;
+                }
+            }
+        }
+
+        function drawBoundaries() {
+            if (!gameState.showBoundaries) return;
+
+            const { gameMode, boundaryThickness, tutorialBoundaryAdjustments, level1BoundaryAdjustments } = gameState;
+            let currentBoundaries = [];
+            let currentAdjustments = {};
+
+            if (gameMode === 'tutorial') {
+                currentBoundaries = gameState.tutorialBoundaries;
+                currentAdjustments = tutorialBoundaryAdjustments;
+            } else if (gameMode === 'level1') {
+                currentBoundaries = gameState.level1Boundaries;
+                currentAdjustments = level1BoundaryAdjustments;
+            }
+
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'; // Red, semi-transparent for visibility
+
+            currentBoundaries.forEach(boundary => {
+                let { x, y, width, height } = boundary;
+
+                // Apply adjustments based on boundary ID
+                const adjustment = currentAdjustments[boundary.id];
+                if (adjustment) {
+                    x += adjustment.adjustX;
+                    y += adjustment.adjustY;
+                    width += adjustment.adjustWidth;
+                    height += adjustment.adjustHeight;
+                }
+
+                ctx.fillRect(x, y, width, height);
+            });
+        }
+
+        function drawDialogueBox() {
+            const { activeDialogue } = gameState;
+            activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
+
+            const boxHeight = 200;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; ctx.strokeStyle = '#FFF'; ctx.lineWidth = 2;
+            ctx.fillRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+            ctx.strokeRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 20px "Roboto Mono"'; ctx.textAlign = 'left';
+            ctx.fillText(activeDialogue.speaker, 140, canvas.height - boxHeight);
+            
+            if (activeDialogue.speaker === "Ratio" && ratioImageR.complete) {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(35, canvas.height - boxHeight - 5, 80, 80);
+                ctx.drawImage(ratioImageR, 40, canvas.height - boxHeight, 70, 70);
+            }
+            
+            ctx.font = 'bold 22px "Roboto Mono"';
+            ctx.fillStyle = '#99FF99';
+            ctx.shadowColor = "black";
+            ctx.shadowBlur = 4;
+            
+            const lines = wrapText(activeDialogue.displayText, 90);
+            lines.forEach((line, index) => {
+                ctx.fillText(line, 145, canvas.height - boxHeight + 45 + (index * 30));
+            });
+
+            if (activeDialogue.charIndex >= activeDialogue.text.length) {
+                if(activeDialogue.options.length > 0) {
+                    activeDialogue.options.forEach((option, index) => {
+                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFFF00' : '#99FF99';
+                        // Add [E] to the selected option
+                        const prefix = index === activeDialogue.selectedOption ? '[E] > ' : '    ';
+                        ctx.fillText(`${prefix}${option.text}`, 50, canvas.height - boxHeight + 110 + (index * 30));
+                    });
+                } else {
+                    ctx.fillStyle = '#FFFF00'; // Changed to yellow
+                    ctx.fillText("Press [E] to continue...", canvas.width - 450, canvas.height - 40);
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+        
+        function wrapText(text, maxWidthChars) {
+            const words = text.split(' ');
+            let lines = []; let currentLine = words[0] || '';
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + ' ' + words[i]).length > maxWidthChars) {
+                    lines.push(currentLine); currentLine = words[i];
+                } else { currentLine += ' ' + words[i]; }
+            }
+            lines.push(currentLine); return lines;
+        }
+
+        function createLeaves(count = 150) {
+            for (let i = 0; i < count; i++) {
+                gameState.leaves.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 10 + 5,
+                    speedY: Math.random() * 0.5 + 0.2,
+                    speedX: Math.sin(Math.random() * Math.PI * 2) * 0.2,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 2,
+                    opacity: Math.random() * 0.5 + 0.3
+                });
+            }
+        }
+
+        let lastTime = 0;
+        function gameLoop(time) {
+            if (lastTime > 0) {
+                const deltaTime = (time - lastTime) / 1000; // Delta time in seconds
+                update(deltaTime);
+            }
+            lastTime = time;
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function init() {
+            loadGame();
+
+            // Start music immediately if game is already loaded (not on start screen)
+            if (gameState.gameMode !== 'startScreen') {
+                startBackgroundMusic();
+            }
+
+            createLeaves();
+            
+            // Level Boundaries - Defined here to ensure canvas.width and canvas.height are available
+            const tutorialBoundaries = [
+                // Left wall
+                { id: 'tutorial_wall_left', x: 0, y: 0, width: 600, height: canvas.height },
+                // Right wall
+                { id: 'tutorial_wall_right', x: 950, y: 0, width: 600, height: canvas.height },
+                // Top wall (above door)
+                { id: 'tutorial_wall_top', x: 0, y: 0, width: canvas.width, height: 200 },
+                // Bottom wall (below playable area)
+                { id: 'tutorial_wall_bottom', x: 0, y: canvas.height - 100, width: canvas.width, height: 100 }
+            ];
+            const level1Boundaries = [
+                // --- Outer Walls ---
+                // Top wall (covers spires and top edge) - MODIFIED
+                { id: 'wall_top', x: 0, y: 0, width: 1536, height: 57 },
+                // Left wall (top section)
+                { id: 'wall_left_top', x: 0, y: 114, width: 205, height: 284 },
+                // Left wall (main section)
+                { id: 'wall_left_main', x: 0, y: 398, width: 128, height: 626 },
+                // Right wall (top section) - MODIFIED
+                { id: 'wall_right_top', x: 1361, y: 114, width: 175, height: 284 },
+                // Right wall (main section) - MODIFIED
+                { id: 'wall_right_main', x: 1428, y: 398, width: 108, height: 626 },
+                // Bottom wall (entire strip) - MODIFIED
+                { id: 'wall_bottom', x: 0, y: 990, width: 1536, height: 34 },
+
+                // --- Buildings ---
+                // Left Building - MODIFIED (Moved down, 30% bigger)
+                { id: 'building_left', x: 167, y: 151, width: 333, height: 338 },
+                // Center Building - MODIFIED (Moved up)
+                { id: 'building_center', x: 519, y: 87, width: 499, height: 384 },
+                // Right Building - MODIFIED (Moved down, 30% bigger)
+                { id: 'building_right', x: 1037, y: 151, width: 333, height: 338 },
+
+                // --- Trees (Trunks) ---
+                // Standard size for trunks (adjust as needed)
+                // { id: 'tree_template', x: 0, y: 0, width: 51, height: 34 }
+
+                // Top Row (5 trees) - MODIFIED
+                { id: 'tree_top_1', x: 190, y: 280, width: 180, height: 160 },
+                { id: 'tree_top_2', x: 380, y: 250, width: 180, height: 160 },
+                { id: 'tree_top_3', x: 678, y: 240, width: 180, height: 160 },
+                { id: 'tree_top_4', x: 960, y: 250, width: 180, height: 160 },
+                { id: 'tree_top_5', x: 1165, y: 280, width: 180, height: 160 },
+
+                // Left Row (3 trees) - MODIFIED
+                { id: 'tree_left_1', x: 90, y: 340, width: 180, height: 160 },
+                { id: 'tree_left_2', x: 50, y: 520, width: 180, height: 160 },
+                { id: 'tree_left_3', x: 90, y: 700, width: 180, height: 160 },
+
+                // Right Row (3 trees) - MODIFIED
+                { id: 'tree_right_1', x: 1185, y: 340, width: 180, height: 160 },
+                // { id: 'tree_right_2', x: 1225, y: 520, width: 180, height: 160 }, // <-- REMOVED to open path
+                { id: 'tree_right_3', x: 1185, y: 640, width: 180, height: 160 }, // <-- Moved down from y: 520
+
+                // Bottom Row (3 trees) - MODIFIED
+                { id: 'tree_bottom_1', x: 295, y: 780, width: 180, height: 160 },
+                // { id: 'tree_bottom_2', x: 678, y: 790, width: 180, height: 160 }, // <-- REMOVED for spawn
+                { id: 'tree_bottom_3', x: 1060, y: 780, width: 180, height: 160 },
+            ];
+
+
+
+            // Assign to gameState for access in other functions
+            gameState.tutorialBoundaries = tutorialBoundaries;
+            gameState.level1Boundaries = level1Boundaries;
+            
+            document.getElementById('save-button').addEventListener('click', saveGame);
+            document.getElementById('load-button').addEventListener('click', () => location.reload());
+            document.getElementById('new-game-button').addEventListener('click', newGame);
+            startButton.addEventListener('click', startGame);
+
+            // Start music on any click (fallback)
+            document.addEventListener('click', startBackgroundMusic, { once: true });
+
+            setInterval(saveGame, 180000);
+            
+            const assetsToLoad = [
+                startScreenImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
+                brokenGaryImage, garyWakeUpImage, fixedGaryIdleImage,
+                cogImage, loomImage, chipImage, doorSpriteImage, doorOpenImage, doorClosedImage,
+                snowflakeImage, introductionImage, textboxBackgroundImage
+            ];
+            let loadedCount = 0;
+            const totalAssets = assetsToLoad.length;
+
+            const checkAllLoaded = () => {
+                loadedCount++;
+                if (loadedCount === totalAssets) {
+                    requestAnimationFrame(gameLoop);
+                }
+            };
+
+            assetsToLoad.forEach(asset => {
+                asset.onload = checkAllLoaded;
+                asset.onerror = () => {
+                    console.error(`Failed to load image: ${asset.src}`);
+                    checkAllLoaded();
+                };
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
+

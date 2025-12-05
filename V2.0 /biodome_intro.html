@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Dome Entrance - Prompt Academy</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #00FFFF;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 24px;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 20px;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto Mono', monospace;
+            overflow: hidden;
+        }
+        .game-container {
+            position: relative;
+        }
+        .game-console-body {
+            background: linear-gradient(145deg, #3c3c3c, #1e1e1e);
+            border-radius: 30px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            border: 2px solid #111;
+            width: auto;
+            max-height: 98vh;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
+        }
+        #canvas-header {
+            color: #aaa;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #game-canvas {
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 91vw;
+            max-height: 77vh;
+            height: auto;
+            aspect-ratio: 1536 / 1024;
+            object-fit: contain;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay">LOADING...</div>
+    <div class="game-container">
+        <div class="game-console-body">
+            <div id="canvas-header">ENTERING BIO-DOME</div>
+            <canvas id="game-canvas" width="1536" height="1024"></canvas>
+        </div>
+    </div>
+    
+    <!-- Background Music -->
+    <audio id="background-music" loop>
+        <source src="assets/audio/Pixel_Paradise_Start_Level1_2.mp3" type="audio/mpeg">
+    </audio>
+
+    <script type="module">
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Loading Screen Logic
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loading-overlay');
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 500);
+        });
+
+        // Initialize background music
+        const backgroundMusic = document.getElementById('background-music');
+        backgroundMusic.volume = 0.25; 
+
+        // Play music check for saved time
+        const savedTime = parseFloat(localStorage.getItem('bgMusicTime'));
+        if (!isNaN(savedTime)) {
+            backgroundMusic.currentTime = savedTime;
+        }
+        
+        backgroundMusic.play().catch(error => {
+            console.log('Audio playback failed:', error);
+        });
+
+        // Save audio time on page transition
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('bgMusicTime', backgroundMusic.currentTime);
+        });
+
+        // ============================================================================
+        // ANALYTICS MANAGER
+        // ============================================================================
+        const analytics = {
+            sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            sessionStart: Date.now(),
+            events: [],
+
+            // Core logging function
+            log(eventType, data = {}) {
+                const event = {
+                    timestamp: Date.now(),
+                    sessionId: this.sessionId,
+                    type: eventType,
+                    data: data
+                };
+
+                this.events.push(event);
+
+                // Send to Netlify immediately for important events
+                if (this.shouldSendImmediately(eventType)) {
+                    this.sendToNetlify(event);
+                }
+            },
+
+            shouldSendImmediately(type) {
+                // Send critical events right away
+                return ['transition_complete', 'session_end'].includes(type);
+            },
+
+            async sendToNetlify(event) {
+                try {
+                    await fetch('/.netlify/functions/log-analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(event)
+                    });
+                } catch (error) {
+                    console.error('Analytics logging failed:', error);
+                    // Fail silently - don't break game
+                }
+            },
+
+            // Batch send on session end
+            async sendAll() {
+                if (this.events.length === 0) return;
+
+                try {
+                    await fetch('/.netlify/functions/log-analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: this.sessionId,
+                            sessionStart: this.sessionStart,
+                            sessionEnd: Date.now(),
+                            totalEvents: this.events.length,
+                            events: this.events
+                        })
+                    });
+                } catch (error) {
+                    console.error('Batch analytics send failed:', error);
+                }
+            }
+        };
+
+        // Send analytics on page unload
+        window.addEventListener('beforeunload', () => {
+            analytics.log('session_end', {
+                duration: Date.now() - analytics.sessionStart,
+                totalEvents: analytics.events.length
+            });
+            analytics.sendAll();
+        });
+
+        // Track page view
+        analytics.log('transition_screen_viewed', {
+            from: 'start_level',
+            to: 'ecology_level'
+        });
+
+        // ============================================================================
+        // GAME STATE
+        // ============================================================================
+        let gameState = {
+            activeDialogue: {
+                isActive: false,
+                speaker: null,
+                text: '',
+                displayText: '',
+                charIndex: 0,
+                options: [],
+                selectedOption: 0
+            }
+        };
+
+        // ============================================================================
+        // ASSET LOADING
+        // ============================================================================
+        const transitionBackground = new Image();
+        transitionBackground.src = 'assets/ui/transition.png';
+
+        const ratioImageR = new Image();
+        ratioImageR.src = 'assets/start/Ratio_R.png';
+
+        // ============================================================================
+        // DIALOGUE SYSTEM
+        // ============================================================================
+        function startDialogue(speaker, text, options = []) {
+            const { activeDialogue } = gameState;
+            activeDialogue.isActive = true;
+            activeDialogue.speaker = speaker;
+            activeDialogue.text = text;
+            activeDialogue.displayText = '';
+            activeDialogue.charIndex = 0;
+            activeDialogue.options = options;
+            activeDialogue.selectedOption = 0;
+        }
+
+        function closeDialogue() {
+            gameState.activeDialogue.isActive = false;
+        }
+
+        function proceedToEcologyLevel() {
+            analytics.log('transition_complete', {
+                timeOnScreen: Date.now() - analytics.sessionStart
+            });
+            window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'ecology_level.html'
+                : '/ecology_level';
+        }
+
+        // ============================================================================
+        // KEY HANDLER
+        // ============================================================================
+        function handleKeyDown(e) {
+            const { activeDialogue } = gameState;
+            const key = e.key.toLowerCase();
+
+            if (activeDialogue.isActive) {
+                if (key === 'w' || key === 'arrowup') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
+                } else if (key === 's' || key === 'arrowdown') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
+                } else if (key === 'e') {
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        // Skip typewriter effect
+                        activeDialogue.charIndex = activeDialogue.text.length;
+                    } else if (activeDialogue.options.length > 0) {
+                        // Execute selected option
+                        activeDialogue.options[activeDialogue.selectedOption].action();
+                    } else {
+                        closeDialogue();
+                    }
+                }
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        // ============================================================================
+        // DRAW FUNCTIONS
+        // ============================================================================
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background image
+            if (transitionBackground.complete && transitionBackground.naturalWidth > 0) {
+                ctx.drawImage(transitionBackground, 0, 0, canvas.width, canvas.height);
+            } else {
+                // Fallback to solid color background
+                ctx.fillStyle = '#051525';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw dialogue box if active
+            if (gameState.activeDialogue.isActive) {
+                drawDialogueBox();
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        function drawDialogueBox() {
+            const { activeDialogue } = gameState;
+            activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
+
+            // Dynamic box height based on number of options
+            const baseHeight = 150; // Narrower height
+            const optionCount = activeDialogue.options.length;
+            const extraHeight = optionCount > 2 ? (optionCount - 2) * 35 : 0;
+            const boxHeight = baseHeight + extraHeight;
+
+            // Draw box with gradient matching game design colors
+            const boxX = 60;
+            const boxWidth = canvas.width - 100;
+            const boxY = canvas.height - boxHeight - 40; // Moved up slightly
+
+            const boxGradient = ctx.createLinearGradient(0, boxY, 0, canvas.height);
+            // More transparent
+            boxGradient.addColorStop(0, 'rgba(15, 25, 45, 0.7)');
+            boxGradient.addColorStop(0.5, 'rgba(25, 35, 60, 0.7)');
+            boxGradient.addColorStop(1, 'rgba(15, 25, 45, 0.7)');
+            ctx.fillStyle = boxGradient;
+            ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+            // Draw cyan border for consistency with game UI
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00FFFF';
+            ctx.shadowBlur = 10;
+            ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.shadowBlur = 0;
+
+            // Draw inner accent line
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(boxX + 8, boxY + 8, boxWidth - 16, boxHeight - 16);
+
+            // Draw speaker name
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 20px "Roboto Mono"';
+            ctx.textAlign = 'left';
+            ctx.fillText(activeDialogue.speaker, boxX + 105, boxY + 32);
+
+            // Draw character portrait
+            if (activeDialogue.speaker === "Ratio" && ratioImageR.complete) {
+                ctx.drawImage(ratioImageR, boxX + 20, boxY + 20, 70, 70);
+            }
+
+            ctx.font = 'bold 22px "Roboto Mono"';
+            ctx.fillStyle = '#E0FFFF';
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+            ctx.shadowBlur = 4;
+
+            const lines = wrapText(activeDialogue.displayText, 85);
+            lines.forEach((line, index) => {
+                ctx.fillText(line, boxX + 105, boxY + 65 + (index * 30));
+            });
+
+            if (activeDialogue.charIndex >= activeDialogue.text.length) {
+                if(activeDialogue.options.length > 0) {
+                    activeDialogue.options.forEach((option, index) => {
+                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFD700' : '#00FFFF';
+                        if (index === activeDialogue.selectedOption) {
+                            ctx.shadowColor = '#FFD700';
+                            ctx.shadowBlur = 8;
+                        }
+                        // Add [E] to the selected option
+                        const prefix = index === activeDialogue.selectedOption ? '[E] ▶ ' : '      ';
+                        ctx.fillText(`${prefix}${option.text}`, boxX + 30, boxY + 125 + (index * 35));
+                        ctx.shadowBlur = 4;
+                    });
+                } else {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 8;
+                    ctx.fillText("Press [E] to continue...", boxX + boxWidth - 380, boxY + boxHeight - 110);
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function wrapText(text, maxWidthChars) {
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = words[0] || '';
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + ' ' + words[i]).length > maxWidthChars) {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                } else {
+                    currentLine += ' ' + words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        // ============================================================================
+        // TYPEWRITER EFFECT
+        // ============================================================================
+        setInterval(() => {
+            const { activeDialogue } = gameState;
+            if (activeDialogue.isActive && activeDialogue.charIndex < activeDialogue.text.length) {
+                activeDialogue.charIndex++;
+            }
+        }, 20); // 50 chars/second
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+        setTimeout(() => {
+            startDialogue("Ratio", "Welcome to the Bio-Dome, Friend. This is where we study the ecology of modified plant species. Go talk to the Bio-Bot over there.", [
+                { text: "Continue to Bio-Dome", action: proceedToEcologyLevel }
+            ]);
+        }, 500);
+
+        // Start game loop
+        draw();
+    </script>
+</body>
+</html>

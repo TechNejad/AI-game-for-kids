@@ -28,7 +28,11 @@ exports.handler = async (event, context) => {
   console.log("CACHE MISS");
 
   // --- 2. Pick an API Key (Key Rotation) ---
-  const allKeys = process.env.MY_GAME_API_KEYS.split(',');
+  const allKeys = [
+    process.env.GROQ_API_KEY_1,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3
+  ].filter(Boolean);
   const selectedKey = allKeys[Math.floor(Math.random() * allKeys.length)];
 
   if (!selectedKey) {
