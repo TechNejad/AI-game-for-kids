@@ -1,6 +1,6 @@
-# 🎮 **Prompt Academy** 
+# 🎮 **AI Academy** 
 
-### [**Try Our Live Game Demo Here**](https://prompt-academy1.netlify.app/)
+### [**Try Our Live Game Demo Here**](https://ai-academy-game.netlify.app/)
 
 ---
 
